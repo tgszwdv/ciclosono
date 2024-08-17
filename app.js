@@ -1,65 +1,74 @@
 document.addEventListener('DOMContentLoaded', () => {
     const sleepTimeInput = document.getElementById('sleep-time');
+    const calculateBtn = document.getElementById('calculate-btn');
+    const resultsDiv = document.getElementById('results');
+    const changeModeBtn = document.getElementById('change-mode');
+    const modeLabel = document.getElementById('mode-label');
+    const modeIcon = document.getElementById('mode-icon');
+    const inputLabel = document.getElementById('input-label');
+
+    let isWakeTimeMode = false;
+
+    // Define o campo de hora com o horário atual
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
     const minutes = now.getMinutes().toString().padStart(2, '0');
     sleepTimeInput.value = `${hours}:${minutes}`;
-});
 
-document.getElementById('change-time-btn').addEventListener('click', function() {
-    const sleepTimeInput = document.getElementById('sleep-time');
-    sleepTimeInput.focus();
-});
+    // Atualiza a interface com base no modo inicial
+    updateMode();
 
-document.getElementById('calculate-btn').addEventListener('click', function() {
-    const sleepTimeInput = document.getElementById('sleep-time').value;
-    
-    if (!sleepTimeInput) {
-        alert('Por favor, insira a hora para dormir.');
-        return;
-    }
-
-    const sleepTime = new Date(`1970-01-01T${sleepTimeInput}:00`);
-    const cycleDuration = 90 * 60 * 1000; 
-    const resultsDiv = document.getElementById('results');
-    resultsDiv.innerHTML = ''; 
-
- 
-    sleepTime.setMinutes(sleepTime.getMinutes() - 15);
-
-    let idealTimes = [];
-    let closestTime = null;
-    let closestDifference = Infinity;
-    
-    for (let i = 1; i <= 6; i++) {
-        const wakeUpTime = new Date(sleepTime.getTime() + i * cycleDuration);
-        const formattedWakeUpTime = formatTime(wakeUpTime);
-        const diff = Math.abs(wakeUpTime - sleepTime.getTime() + (6 * cycleDuration)); 
-        
-        if (diff < closestDifference) {
-            closestDifference = diff;
-            closestTime = formattedWakeUpTime;
-        }
-        
-        idealTimes.push({
-            cycles: i,
-            time: formattedWakeUpTime,
-        });
-    }
-    
-    let resultHtml = `<p>Se você for dormir às ${sleepTimeInput} e precisa acordar entre 6:00 e 6:40, os horários ideais para acordar, alinhados com ciclos de sono de 90 minutos, seriam:</p><br>`;
-    
-    idealTimes.forEach(item => {
-        resultHtml += `<p>${item.time} (${item.cycles} ciclos)</p><br>`;
+    // Alterna entre modo de hora de dormir e hora de acordar
+    changeModeBtn.addEventListener('click', () => {
+        isWakeTimeMode = !isWakeTimeMode;
+        updateMode();
+        resultsDiv.innerHTML = ''; // Limpa os resultados ao mudar o modo
     });
 
-    resultHtml += `<p>Acordar às ${closestTime} seria o ideal, pois coincidiria com o final de um ciclo de sono. Se precisar acordar antes de ${closestTime}, ${idealTimes.find(item => item.time === closestTime).time} seria a próxima opção, mas estaria acordando com menos ciclos completos.</p>`;
+    calculateBtn.addEventListener('click', () => {
+        const time = sleepTimeInput.value;
+        if (!time) {
+            resultsDiv.innerHTML = '<p class="text-red-500">Por favor, insira uma hora.</p>';
+            return;
+        }
 
-    resultsDiv.innerHTML = resultHtml;
+        const date = new Date(`1970-01-01T${time}:00`);
+        const results = [];
+        const cycles = 6;
+        const cycleDuration = 90; // duração de um ciclo em minutos
+
+        if (isWakeTimeMode) {
+            // Hora para dormir com base na hora de acordar
+            for (let i = cycles; i >= 1; i--) {
+                let calcTime = new Date(date.getTime());
+                calcTime.setMinutes(calcTime.getMinutes() - cycleDuration * i);
+                const formattedTime = calcTime.toTimeString().slice(0, 5);
+                results.push(`${formattedTime} (${i} ciclo${i > 1 ? 's' : ''})`);
+            }
+            resultsDiv.innerHTML = `Se você deseja acordar às ${time}, aqui estão os horários ideais para dormir, alinhados com ciclos de sono de 90 minutos:<br>${results.map(result => `<p class="text-green-500">${result}</p>`).join('<br>')}`;
+        } else {
+            // Hora de acordar com base na hora de dormir
+            for (let i = 1; i <= cycles; i++) {
+                let calcTime = new Date(date.getTime());
+                calcTime.setMinutes(calcTime.getMinutes() + cycleDuration * i);
+                const formattedTime = calcTime.toTimeString().slice(0, 5);
+                results.push(`${formattedTime} (${i} ciclo${i > 1 ? 's' : ''})`);
+            }
+            resultsDiv.innerHTML = `Se você for dormir às ${time}, os horários ideais para acordar, alinhados com ciclos de sono de 90 minutos, seriam:<br>${results.map(result => `<p class="text-green-500">${result}</p>`).join('<br>')}`;
+        }
+    });
+
+    function updateMode() {
+        if (isWakeTimeMode) {
+            modeLabel.textContent = 'Modo ativo - Hora de Acordar';
+            modeIcon.className = 'fas fa-sun wake'; // Ícone para Hora de Acordar
+            inputLabel.textContent = 'Digite a hora que deseja acordar:';
+            changeModeBtn.textContent = 'Alterar modo';
+        } else {
+            modeLabel.textContent = 'Modo ativo - Hora de Dormir';
+            modeIcon.className = 'fas fa-bed sleep'; // Ícone para Hora de Dormir
+            inputLabel.textContent = 'Digite a hora que irá dormir:';
+            changeModeBtn.textContent = 'Alterar Modo';
+        }
+    }
 });
-
-function formatTime(date) {
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
-}
